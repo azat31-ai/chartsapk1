@@ -1,0 +1,14 @@
+{
+  "name": "charts-app",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "convert": "python3 convert.py book.xlsx www",
+    "sync": "npx cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/cli": "^6.1.2",
+    "@capacitor/core": "^6.1.2"
+  }
+}
