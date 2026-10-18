@@ -24,6 +24,7 @@ button:disabled{opacity:.35}
 table{border-collapse:collapse;table-layout:fixed;position:absolute;left:0;top:0}
 td{padding:0 2px;overflow:hidden;white-space:nowrap;text-overflow:clip;font-family:Calibri,Carlito,Arial,sans-serif;font-size:11pt;color:#000;vertical-align:bottom;line-height:1.15;user-select:none;-webkit-user-select:none}
 .grid td{border:1px solid #d4d4d4}
+tr.st td{vertical-align:middle}
 td.wr{white-space:normal;word-break:break-word}
 td.lk{cursor:pointer}
 td.ed{outline:1px dashed rgba(79,157,255,.0)}
@@ -146,15 +147,31 @@ function render(sh, keep){
   const ed = EDITS[sh.name] || {};
   const cols = sh.cols, rows = sh.rows;
   const TW = cols.reduce((a, b) => a + b, 0), TH = rows.reduce((a, b) => a + b, 0);
-  const W = sh.bw || TW, H = sh.bh || TH;
-  let h = `<table class="${sh.grid ? 'grid' : ''}" style="width:${TW}px;height:${TH}px"><colgroup>${cols.map(w => `<col style="width:${w}px">`).join('')}</colgroup>`;
+  let W = sh.bw || TW, H = sh.bh || TH;
+  // растягиваем по высоте строки НИЖЕ картинок, чтобы вкладка заполняла экран (картинки не искажаются)
+  let rowsA = rows.slice(), kRows = 1;
+  {
+    const vw = view.clientWidth || window.innerWidth, vh = view.clientHeight || window.innerHeight;
+    const s0 = Math.min(3, vw / W);
+    const imgB = (sh.items || []).reduce((m, it) => Math.max(m, it.y + it.h), 0);
+    if (H > imgB) {
+      let k = (vh / s0 - imgB) / (H - imgB);
+      kRows = Math.max(1, Math.min(2, k));
+      if (kRows > 1.02) {
+        let y = 0;
+        rowsA = rows.map(r => { const t = y; y += r; return t >= imgB - 4 ? Math.round(r * kRows) : r; });
+        H = Math.round(imgB + (H - imgB) * kRows);
+      } else kRows = 1;
+    }
+  }
+  let h = `<table class="${sh.grid ? 'grid' : ''}" style="width:${TW}px;height:${rowsA.reduce((a, b) => a + b, 0)}px"><colgroup>${cols.map(w => `<col style="width:${w}px">`).join('')}</colgroup>`;
   // rows → cells map
   const grid = rows.map(() => ({}));
   sh.cells.forEach(c => { if (grid[c[0]]) grid[c[0]][c[1]] = c; });
   const covered = new Set();
   sh.cells.forEach(c => { const m = c[5]; if (m) for (let r = 0; r < m[0]; r++) for (let k = 0; k < m[1]; k++) if (r || k) covered.add((c[0] + r) + ',' + (c[1] + k)); });
   for (let r = 0; r < rows.length; r++){
-    h += `<tr style="height:${rows[r]}px">`;
+    h += `<tr style="height:${rowsA[r]}px"${rowsA[r] !== rows[r] ? ' class="st"' : ''}>`;
     for (let c = 0; c < cols.length; c++){
       const key = r + ',' + c;
       if (covered.has(key)) continue;
@@ -501,7 +518,7 @@ async function init(){
   try { history.replaceState({ d: 0 }, '', '#' + encodeURIComponent(start)); } catch(e){ useHist = false; }
   stack = [start]; histDepth = 0;
   render(byName.get(start));
-  addEventListener('resize', () => { if (Math.abs(scale - fitScale) < .02) fit(); });
+  addEventListener('resize', () => { if (cur && Math.abs(scale - fitScale) < .02) render(cur); });
 }
 init().catch(e => { $('#loading').textContent = 'Ошибка загрузки: ' + e.message; });
 })();
